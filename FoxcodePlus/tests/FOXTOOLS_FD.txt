@@ -1,0 +1,1226 @@
+Fenster
+
+Die größte Funktionsgruppe beinhaltet die Aufrufe für Fenstermanipulationen. Hierbei müssen Sie in sehr vielen Fällen zwischen zeichenorientierten und pixelorientierten Funktionen unterscheiden, denn anders als in FoxPro´s xBase-Dialekt, akzeptieren die Fenster-Funktionen bei Koordinatenangaben allesamt nur ganzzahlige Werte. Damit die Fenster unter Windows pixelgenau plaziert werden können, verfügt das FoxPro-API über spezielle Funktionen, die ihre Koordinatenparameter in Pixeleinheiten erwarten! Zu diesen Windows-typischen Funktionen gibt es dann immer die entsprechende zeichenorientierte Variante, die natürlich auch eingesetzt werden kann. Hier ist dann aber immer nur eine Positionierung „auf dem nächsten ganzen Zeichen“ des aktuell verwendeten Fonts möglich (ist also ungenauer)! Diese „Zweigleisigkeit“ der Funktionen wird unter FoxPro´s xBase-Sprache durch Verwendung von Koordinaten mit Nachkommastellen umgangen.
+
+Weiterhin wird die Farbverwaltung der Fenster in FPW fast gänzlich von Windows selbst übernommen, woduch einige FOXTOOLS.FLL-Funktionen unter Windows nicht recht funktionieren wollen. Ich habe, mangels tieferer Einsicht in die Programmierung der aktuellen Foxtools-Bibliothek, die entsprechenden Funktionen als „teilweise fehlerhaft“ markiert. Bitte lesen Sie meine Ausführungen an den entsprechenden Stellen.
+
+Die mit diesen Routinen erzeugten Fenster haben einige interessante Eigenschaften, die Sie wirklich nutzbringend einsetzen können:
+
+Da Sie die Erzeugung der Fenster mehr oder weniger an FoxPro´s Fensterverwaltung „vorbei“ vornehmen, erscheinen diese auch nicht im Fenster-Menü, sind nicht mit CLEAR ALL zu löschen und verhalten sich auch sonst wie „waschechte“ Systemfenster! Eine prima Gelegenheit gleich einmal eine Symbolleiste zu realisieren, die in FoxPro integriert werden kann!
+
+Viel Vergnügen dabei...
+MAINHWND()
+
+Zweck: Rückgabe des WIN-Fensterhandles des FoxPro-Hauptfensters.
+Syntax: MAINHWND()
+Parameter: keine
+Rückgabe: Nummerisch
+Vgl.: _WHTOHWND(), _WMAINWIND()
+Beschreibung:
+
+Die Funktion MAINHWND() gibt das Windows-FensterHandle des FoxPro-Hauptfensters zurück.
+Beispiel:
+
+ m.N_FPhwnd = MAINHWND()  
+
+_GETWRECT()
+
+Zweck: Ermitteln der Pixelkoordinaten eines umschließenden Fensterrahmens.
+Syntax:
+_GETWRECT(<AusdrN1>,<@AusdrN2>,<@AusdrN3>,<@AusdrN4>,<@AusdrN5>)
+Parameter:
+<AusdrN1> FP-FensterHandle des Fensters
+<AusdrN2> äußerer Rand oben
+<AusdrN3> äußerer Rand links
+<AusdrN4> äußerer Rand unten
+<AusdrN5>äußerer Rand rechts
+Rückgabe: Logisch
+Vgl.: _WSIZE(), _WTOP(), _WBOTTOM(),
+_WLEFT(), _WRIGHT()
+Beschreibung:
+
+Die Funktion _GETWRECT ist eine Umsetzung der WIN-API Funktion void GetWindowRect(hwnd, lprc), die neben dem WIN-Fensterhandle <hwnd> einen Zeiger <lprc> auf eine Struktur vom Typ <RECT> erwartet. Diese Struktur besteht aus vier Integer-Werten, die die obere, linke und untere, rechte Ecke eines Rechtecks definieren. Die Foxtools-Funktion erwartet diese Struktur nun „zerlegt“ in vier per Referenz übergebenen Variablen und schreibt während der Arbeit die Koordinaten eines „fensterumschließenden“ Rahmens in diese hinein. Als Funktionsrückgabewert wird .T. (unbedeutend) geliefert. Nach Ausführung der Funktion können Sie die vier Variablen auswerten und so die „äußeren“ Kanten des Fensterrahmens erfahren.
+Beispiel:
+
+ * Vorausgesetzt Ihre Bildschirmauflösung ist auf 640 x 480 Bildpunkte gesetzt
+ * und das FoxPro-Hauptfenster auf volle Größe maximiert....
+ STORE 0 TO m.N_oben,m.N_links,m.N_unten,m.N_rechts, m.N_FPhwnd
+ m.N_FPhwnd = MAINHWND()
+ = _GETWRECT(m.N_FPhwnd,@oben,@links,@untenL,@untenr)
+ ? m.N_oben && gibt> -4
+ ? m.N_links && gibt> -4
+ ? m.N_unten && gibt> 484
+ ? m.N_rechts && gibt> 644
+ ? "Interessant, nicht wahr?"      
+
+_WHTOHWND()
+
+Zweck: FensterHandle-Konvertierung.
+Syntax: _WHTOHWND(<AusdrN1>)
+Parameter:
+<AusdrN1> FP-FensterHandle eines Fensters
+Rückgabe: Nummerisch
+Vgl.: MAINHWND(), _WMAINWIND()
+Beschreibung:
+
+FoxPro benutzt systemintern eine eigene, von Windows unabhängige Fensterverwaltung, um mit der DOS-Version kompatibel zu bleiben. Die FensterHandle-Nummern von FoxProW weichen deshalb von den entsprechenden Windows-FensterHandle Nummern ab. Ein und dasselbe Fenster hat auf der einen Seite das obligatorische WIN-FensterHandle und auf der anderen Seite in FoxProW aber auch noch das FP-FensterHandle. Die Funktion _WhToHwnd() gibt das WIN-FensterHandle zum in <AusdrN1> übergebenen FP-FensterHandle zurück.
+
+Tip: Benutzen Sie zur besseren Unterscheidung zwischen Variablen mit FP-Handlen und WIN-Handlen eine Namensgebung wie: m.WH_name für FoxPro-FensterHandle (wh) ist die typische Notation in FoxPro und m.HWND_name für Windows-FensterHandle (hwnd) ist typische WIN-Notation in C.
+Beispiel:
+
+ m.N_hwnd = _WHTOHWND(MAINHWND())      
+
+_WFINDTITL()
+
+Zweck: FP-FensterHandle nach Fenster-Titel ermitteln.
+Syntax: _WFINDTITL(<AusdrZ1>)
+Parameter: <AusdrZ1> Fenstertitel
+Rückgabe: Nummerisch
+Vgl.: _FINDWINDO()
+Beschreibung:
+
+Ermittelt FP-FensterHandle für das Fenster mit dem in <AusdrN1> übergebenen Titeltext. Wichtig: Es muß der komplette Titel des Fensters buchstabengetreu an die Funktion übergeben werden - Groß-Kleinschreibung wird beachtet! Anderenfalls (Fenster existiert nicht) wird 0 zurückgegeben. Tip: Ein gültiges FoxPro-Befehl-FensterHandle wird immer zurückgegeben, auch wenn das Befehlsfenster geschlossen ist. FP-FensterHandle für das Debug- , das Trace- und das View-Fenster (u.s.w.) werden nur dann größer als Null (also existent) zurückgegeben, wenn diese auch aktiviert sind.
+Beispiel:
+
+ _WFINDTITL("Befehl") gibt> 1908840 (hier zufällig dieser Wert)
+ _WFINDTITL("BeFeHL") gibt> 0      
+
+_WMAINWIND()
+
+Zweck: Rückgabe des FP-FensterHandles des FoxPro-Hauptfensters.
+Syntax: _WMAINWIND()
+Parameter: keine
+Rückgabe: Nummerisch
+Vgl.: MAINHWND()
+Beschreibung:
+
+Ermittelt das FP-FensterHandle für das FoxPro-Hauptfenster unter FoxPro für Windows oder Mac, bzw. das FoxPro-Desktop unter FoxPro für DOS. Achtung: Bei meinen Test hat sich gezeigt, daß das FP-FensterHandle immer den gleichen Wert zurückliefert, ganz gleich in welcher Instanz FP gerade läuft, oder welche anderen Programme noch in der Taskliste aktiv sind!
+Beispiel:
+
+ ? _WHTOHWND(_WMAINWIND()) gibt> (immer?) 1908516  
+
+ ? MAINHWND() &&gibt> ebenfalls (immer?) 1908516  
+
+_FINDWINDO() [zeichenorientiert]
+
+Zweck: Status eines POINTS (Punkts) auf FoxPro´s Screen zurückgeben.
+Syntax:
+_FINDWINDO(<@AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<@AusdrN1> FP-FensterHandle mit Punkt
+<AusdrN2> Zeile des Punkts relativ zum Screen
+<AusdrN3> Spalte des Punkts relativ zum Screen
+Rückgabe: Nummerisch
+Vgl.: _FINDWINDP()
+Beschreibung:
+
+Die Funktion _FINDWINDP() gibt den „Status“ eines an die Funktion übergebenen Punktes (normalerweise des Maus-Punkts) zurück. Desweiteren modifiziert die Funktion die per Referenz übergebene Variable <@AusdrN1>. Dort hinterlegt die Funktion das FensterHandle des Fensters, auf dem gerade der Punkt liegt. Die Koordinate des Punkts wird in Zeile und Spalte „zerlegt“ in <AusdrN2> und <AusdrN3> als IntegerWert an die Funktion übergeben, wobei die Werte als Koordinaten relativ zum FP-Hauptfenster (Screen) angegeben werden müssen. Weitere Details siehe Funktion _FINDWINDP()!
+Beispiel:
+
+Siehe GetKlick.Prg auf der beiliegenden Diskette
+_FINDWINDP() [pixelorientiert]
+
+Zweck: Status eines POINTS (Pixel-Punkts) auf Screen zurückgeben.
+Syntax:
+_FINDWINDOP(<@AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<@AusdrN1> FP-FensterHandle mit Mouse-Punkt
+<AusdrN2> Punkt-Zeile in Pixeln reletiv zum Screen
+<AusdrN3> Punkt-Spalte in Pixeln reletiv zum Screen
+Rückgabe: Nummerisch
+Vgl.: _FINDWINDO()
+Beschreibung:
+
+Die Funktion _FINDWINDP() gibt den „Status“ eines an die Funktion übergebenen Pixel-Punktes (normaler­weise des Maus-Punkts) zurück. Desweiteren modifiziert die Funktion die per Referenz übergebene Variable <@AusdrN1>. Dort hinterlegt die Funktion das FP-FensterHandle des Fensters, auf dem gerade der Punkt liegt. Die Koordinate des Punkts wird in Pixel-Zeile und Pixel-Spalte „zerlegt“ in <AusdrN2> und <AusdrN3> an die Funktion übergeben, wobei die Werte als Pixel-Werte relativ zum Screen (z.B. Screen 640 x 480 oder 800 x 600 oder 1024 x 768 Pixel) angegeben werden müssen. Als Resultat gibt die Funktion den „Status“ des Punkts als IntegerWert zurück. Welche Werte was bedeuten, soll der folgende Auszug aus dem (auf der Diskette beigefügten) <Getklick.prg> verdeutlichen.
+
+Der Funktions-ReturnWert wurde in der Variablen <lNwo> abgelegt....
+
+ DO CASE 
+
+  CASE lNwo = 0 
+
+  WAIT WINDOW NOWAIT "Auf festem Rahmen" 
+
+  CASE lNwo =1  
+
+  WAIT WINDOW NOWAIT "In der Hilfe -Region" 
+
+  CASE lNwo =2 
+
+  WAIT WINDOW NOWAIT "In der Arbeits/Text -Region" 
+
+  CASE lNwo =3 
+
+  WAIT WINDOW NOWAIT "In der Ziehen/Titel -Region" 
+
+  CASE lNwo =4 
+
+  WAIT WINDOW NOWAIT "In der Größe_ändern -Region" 
+
+  CASE lNwo =5 
+
+  WAIT WINDOW NOWAIT "In der Schließen -Region" 
+
+  CASE lNwo =6 
+
+  WAIT WINDOW NOWAIT "In der Vollbild -Region"   
+
+  CASE lNwo =7 
+
+  WAIT WINDOW NOWAIT "In der Pfeil_rauf -Region" 
+
+  CASE lNwo =8 
+
+  WAIT WINDOW NOWAIT "In der Pfeil_runter -Region" 
+
+  CASE lNwo =9 
+
+  WAIT WINDOW NOWAIT "In der Seite_rauf -Region" 
+
+  CASE lNwo =10 
+
+  WAIT WINDOW NOWAIT "In der Seite_runter -Region" 
+
+  CASE lNwo =11 
+
+  WAIT WINDOW NOWAIT "In der vertikal_Rollknopf -Region" 
+
+  CASE lNwo =12 
+
+  WAIT WINDOW NOWAIT "In der Pfeil_nach_links -Region" 
+
+  CASE lNwo =13 
+
+  WAIT WINDOW NOWAIT "In der Pfeil_nach_rechts -Region" 
+
+  CASE lNwo =14 
+
+  WAIT WINDOW NOWAIT "In der Bild_nach_links -Region" 
+
+  CASE lNwo =15 
+
+  WAIT WINDOW NOWAIT "In der Bild_nach_rechts -Region" 
+
+  CASE lNwo =16 
+
+  WAIT WINDOW NOWAIT "In der horizontal_Rollknopf  -Region" 
+
+  CASE lNwo =17 
+
+  WAIT WINDOW NOWAIT "Im Fenster-Menü" 
+
+  CASE lNwo =20 
+
+  WAIT WINDOW NOWAIT "In der auf_Symbolgröße  -Region" 
+
+  OTHERWISE 
+
+  WAIT WINDOW NOWAIT "Irgendwo sonst..." 
+
+ ENDCASE 
+
+Beispiel:
+
+Siehe <GetKlick.Prg> auf der beiliegenden Diskette
+_WONTOP()
+
+Zweck: FP-FensterHandle des obersten Fensters zurückgeben.
+Syntax: _WONTOP()
+Parameter: keine
+Rückgabe: Nummerisch
+Vgl.:
+Beschreibung:
+
+Ermittelt das FP-FensterHandle des zuvorderst liegenden Fensters. Normalerweise beziehen sich Eingaben von der Tastatur auf dieses oberste Fenster. Sind alle Fenster geschloßen (Befehlsfenster auch), gibt _WONTOP() das FoxPro-HauptfensterHandle zurück.
+Beispiel:
+
+ m.wh_OT = _WONTOP()      
+
+_WOPEN() [zeichenorientiert] & fehlerhaft
+
+Zweck: Erstellen eines neues Fensters.
+Syntax:
+_WOPEN(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>,<AusdrN6>,
+<AusdrZ1>,<AusdrZ2>)
+Parameter:
+<AusdrN1> IntegerZahl: Reihe der oberen Koordinate
+<AusdrN2> IntegerZahl: Spalte der linken Koordinate
+<AusdrN3> IntegerZahl: Reihe der unteren Koordinate
+<AusdrN4> IntegerZahl: Spalte der rechten Koordinate
+<AusdrN5> IntegerZahl: Fenster-Attribute
+<AusdrN6> IntegerZahl: Farbpalettenummer
+<AusdrZ1> anwenderdefinierte Farbpalette
+<AusdrZ2> String für Rahmenzeichen
+Rückgabe: Nummerisch
+Vgl.: _WOPENP(), _WSETATTR(),
+_WSETTITLE(), _WSHOW()
+Beschreibung:
+
+Die Funktion erzeugt ein neues Fenster an den festgelegten Koordinaten und gibt als Resultat das FP-FensterHandle zurück. Die Koordinaten, die in den Parametern <AusdN1> bis <AusdrN4> übergeben werden, können außerhalb des Bildschirms liegen, doch die Fensterhöhe darf 120 Zeichen und die Fensterbreite 264 Zeichen nicht überschreiten. Der fünfte Parameter dient zur Festlegung der Attribute dieses Fensters. Dafür kann einer oder mehrere der folgenden Werte zusammenaddiert in <AusdrN5> als IntegerZahl übergeben werden:
+
+Tabelle der Fensterattribute
+
+FLAG ATTRIBUT 
+
+ #DEFINE WCURSOR2 Cursor im Fenster angezeigt 
+
+ #DEFINE ZOOM4 Benutzer kann Fenster zoomen 
+
+ #DEFINE ADJ8 Benutzer kann Größe verändern 
+
+ #DEFINE CLOSE16 Benutzer kann Fenster schließen 
+
+Tabelle der Fensterattribute (Fortsetzung)
+
+ FLAG ATTRIBUT 
+
+ #DEFINE MOVE32 Benutzer kann Fenster bewegen 
+
+ #DEFINE HSCROLLBAR64 Horizontalen Rollbalken anzeigen (geht nicht!) 
+
+ #DEFINE VSCROLLBAR 128 Vertikalen Rollbalken anzeigen (geht nicht!) 
+
+ #DEFINE AUTOSCROLL256 Scrollt automatisch, wenn Inhalt über untere  
+Begrenzung hinausgeht 
+
+ #DEFINE WEVENT1024 Empfängt, aktiviert und deaktiviert „Events“: muß  
+z.B. gesetzt werden, damit Titel beim Anklicken Farbe bekommt! 
+
+ #DEFINE SHADOW2048 Fenster wirft einen Schatten 
+
+ #DEFINE WMODAL4096 Benutzer kann Fenster nicht in den Hintergrund setzen  
+(StayOnTop-Flag!) 
+
+ #DEFINE WMINIMIZE8192 Benutzer kann Fenster minimieren  
+
+Der sechste Parameter, welcher die Nummer der Farbpalette angibt, kann jeden gültigen Wert annehmen. Darüberhinaus kann auch der Wert -1 gesetzt werden. Dies bedeutet dann, daß die in <AusdrZ1> definierte Farbpalette zu verwenden ist. (funktioniert unter Windows nicht!) Ein anwenderdefinierter Farbpaletten-String ist 11 Zeichen lang (10 Farbpaare und ein Schatten-Attribut für FP-DOS). Die einzelnen Farbpaare werden dabei in einem Byte (Buchstaben) kodiert. Die ersten 3 Bit des „Low-Nibbels“ (Nibbel := 4 Bit) des Farbpaar-Bytes enthalten die Information zur Vordergrund- (Schrift-) Farbe. Am gesetzten 4. Bit des Low-Nibbels erkennt FoxPro ein gesetztes „Vordergrundfarbe intensiv“-Attribut.
+
+Die ersten 3 Bit des „High-Nibbels“ des Farbpaar-Bytes enthalten analog dazu die Farbinformation zur Hintergrund- (Papier-) Farbe. Am gesetzten 4. Bit des High-Nibbels erkennt FoxPro ein gesetztes „binken“-Attribut. (Ganz schön „trullala“, wie?) - Jetzt wird´s gleich etwas verständlicher, wenn Sie in Ihren Programmen folgende Konstanten definieren und für das zu erzeugende Farbpaar einfach „zusammenrechnen“:
+
+ Vordergrund dezim. High- Low- Nibble  
+   BLACK_ON 0 0000 0000
+   BLUE_ON 1 0000 0001
+   GREEN_ON 2 0000 0010
+   CYAN_ON 3 0000 0011
+   RED_ON 4 0000 0100
+   MAGENTA_ON 5 0000 0101
+   BROWN_ON 6 0000 0110
+   WHITE_ON 7 0000 0111
+   
+
+ Hintergrund
+ BLACK 0 0000 0000
+ BLUE 16 0001 0000
+ GREEN 32 0010 0000
+ CYAN 48 0011 0000
+ RED 64 0100 0000
+ MAGENTA 80 0101 0000
+ BROWN 96 0110 0000
+ WHITE 112 0111 0000
+ 
+ Attribute
+ BRIGHT 8 && 0000 1000
+ BLINK 128 && 1000 0000
+
+Schatten-Bytewerte für FP-DOS (Farbpaar 11)
+CASTSSHADOW:= BRIGHT + BLACK_ON + BLACK
+CASTSNOSHAD:= BRIGHT + WHITE_ON + WHITE + BLINK
+
+Eine FoxPro-Farbpaarliste wie z.B.:
+
+W+/B, W+/BG*, GR+/B, GR+/B, R+/B, W+/GR, GR+/RB, N+/N, GR+/B, R+/B
+
+muß jetzt wie folgt als String erzeugt werden:
+
+m.C_scheme = WHITE_ON + BLUE + BRIGHT && 1. Farbpaar
+m.C_scheme = m.C_scheme + WHITE_ON + CYAN + BRIGHT + BLINK && 2.
+m.C_scheme = m.C_scheme + MAGENTA_ON + BLUE + BRIGHT & 3. Farbp.
+
+u.s.w....
+
+Danach können Sie Ihr eigenes Schema durch Übergabe in <AusdrZ1>
+
+verwenden, wenn Sie gleichzeitig in <AusdrN6> den Wert <-1> übergeben.
+
+Im letzten Parameter <AusdrZ2> kann durch den angegebenen Rahmen-String der Fenstertyp übergeben werden. Näheres dazu siehe Funktion _WOPENP().
+
+Das Fenster wird definiert, aber noch nicht geöffnet. Die Farbattribute, sowie ein Fenstertitel können mit den Funktionen: _WATTR() und _WTITLE() abgefragt und mit _WSETATTR() und _WSETTITLE() nachträglich verändert/gesetzt werden. Abschließend können Sie mit der Funktion _WSHOW(m.FP_HANDLE) das Fenster anzeigen.
+
+Beispiel:
+
+STORE 1 TO m.N_oben, m.N_links
+STORE 10 TO m.N_unten, m.N_rechts
+m.C_flags = WCURSOR+ZOOM+ADJ+MOVE+WEVENT
+m.N_scheme = -1 && eigenes Farbschema nicht verwenden -
+m.C_rahm = "" && kein Rahmen
+* Eigenen Schema-String aufbauen funktioniert nicht unter WINDOWS
+m.C_colors = CHR(BLACK_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(BLACK_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(BLACK_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(WHITE_ON + BLUE + BRIGHT)
+m.C_colors = m.C_colors +CHR(BLACK_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(WHITE_ON + BLUE + BRIGHT)
+m.C_colors = m.C_colors +CHR(WHITE_ON + BLUE + BRIGHT)
+m.C_colors = m.C_colors +CHR(BLACK_ON + BLACK)
+m.C_colors = m.C_colors +CHR(BLACK_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(WHITE_ON + WHITE + BLINK)
+m.C_colors = m.C_colors +CHR(CASTSSHADOW)
+
+m.N_FP_hwnd01 = _WOPEN(m.N_oben, m.N_links, m.N_unten, m.N_rechts,; m.C_flags,
+m.N_scheme, "", m.C_rahm)
+
+
+_WSCROLL() [zeichenorientiert]
+
+Zweck: Scrollt einen rechteckigen Fensterbereich.
+
+Syntax:
+
+_WSCROLL(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>,<AusdrN6>,<AusdrN7>)
+
+Parameter:
+
+<AusdrN1> Handle des Fensters
+<AusdrN2> IntegerZahl: Reihe der oberen Koordinate
+<AusdrN3> IntegerZahl: Spalte der linken Koordinate
+<AusdrN4> IntegerZahl: Reihe der unteren Koordinate
+<AusdrN5> IntegerZahl: Spalte der rechten Koordinate
+<AusdrN6> IntegerZahl: horizontal Scrollen
+<AusdrN7> IntegerZahl: vertikale Scrollen
+
+Rückgabe: Logisch
+
+Vgl.: _WSCROLLP()
+
+Beschreibung:
+
+Diese Funktion dient dazu, einen Bereich des Fensters nach links oder rechts, aufwärts oder abwärts zu scrollen. Geben Sie in <AusdrN1> das FP-FensterHandle für das Fenster an, dessen Bereich gescrollt werden soll. Die Parameter <AusdrN2> bis <AusdrN5> beschreiben den zu scrollenden Bereich. im Parameter <AusdrN6> übergeben Sie die Anzahl der Zeichen um die horizontal verschoben werden soll. Ist der Wert hier negativ, so wird der Fensterinhalt nach links gescrollt. Umgekehrt gilt für einen positiven Wert, daß der Fensterinhalt nach rechts verschoben wird. Im letzten Parameter <AusdrN7> findet sich die Anzahl der Zeichen um die vertikal verschoben werden soll. Ist der Wert hier negativ, so wird der Fensterinhalt nach oben gescrollt. Umgekehrt gilt für einen positiven Wert, daß der Fensterinhalt nach unten verschoben wird.
+
+WICHTIG: Sind beide Scroll-Werte gleich 0, so löscht _WSCROLL() den festgelegten Bereich.
+Beispiel:
+
+STORE 2 TO m.N_oben, m.N_links
+STORE 8 TO m.N_unten, m.N_rechts
+STORE 2 TO m.N_hori
+STORE -1 TO m.N_verti
+= _WSCROLL(m.N_FP_hwnd01, m.N_oben, m.N_links, m.N_unten,m.N_rechts, 
+m.N_hori, m.N_verti) 
+
+_WOPENP() [pixelorientiert] & fehlerhaft
+
+Zweck: Erstellen eines neues Fensters unter FoxPro für Windows oder Macintosh.
+Syntax:
+_WOPENP
+(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>,<AusdrN6>,<AusdrZ1>,<AusdrZ2>)
+Parameter:
+<AusdrN1> Reihe der oberen Pixel-Koordinate
+<AusdrN2> Spalte der linken Pixel-Koordinate
+<AusdrN3> Reihe der unteren Pixel-Koordinate
+<AusdrN4> Spalte der rechten Pixel-Koordinate
+<AusdrN5> Fenster-Attribute
+<AusdrN6> Farbpalettenummer
+<AusdrZ1> anwenderdefinierte Farbpalette
+<AusdrZ2> String für Rahmenzeichen
+Rückgabe: Nummerisch
+Vgl.: _WOPENP(), _WSETATTR(),
+_WSETTITLE(), _WSHOW(), _WCLEAR()
+
+Beschreibung:
+
+Die Funktion erzeugt ein neues Fenster und gibt als Resultat das FP-FensterHandle zurück. Die Koordinaten, die in den Parametern <AusdN1> bis <AusdrN4> übergeben werden, können außerhalb des Bildschirms liegen. Die Koordinaten werden in Pixeln relativ zum Hauptfenster angegeben. Der fünfte Parameter dient zur Festlegung der Attribute dieses Fensters. Dafür kann einer oder mehrere Attribut-Werte (siehe Funktion _WOPEN()) zusammenaddiert in <AusdrN5> als IntegerZahl übergeben werden.
+
+Der sechste Parameter, welcher die Nummer der Farbpalette angibt, kann jeden gültigen Wert (1-24) annehmen. Darüberhinaus kann auch der Wert -1 gesetzt werden, was dann bedeutet, daß die in <AusdrZ1> definierte Farbpalette zu verwenden ist. Ein anwenderdefinierter Farbpaletten-String ist 11 Zeichen lang - Details siehe Funktion _WOPEN() - funktioniert unter Windows nicht. Im letzten Parameter <AusdrZ2> kann durch die Vorbelegung eines Rahmen-Strings der Fenstertyp übergeben werden:
+
+* DoppelterRahmen-Fenstertyp 
+(aktiviert autom. auch Titelzeile im Fenster)
+#DEFINE WO_DOUBLEBOX CHR(205) + CHR(205) + CHR(186) +CHR(186)+ CHR(201) 
++ CHR(187) + CHR(200)
+ + CHR(188) +CHR(205) + CHR(205)+ CHR(186) + CHR(186) + CHR(201) +; CHR(187) 
++ CHR(200) + CHR(188)
+* EinfacherRahmen-Fenstertyp
+#DEFINE WO_SINGLEBOX 
+CHR(196) + CHR(196) + CHR(179) +CHR(179) + CHR(218) + CHR(191) + CHR(192)
+ + CHR(217) +CHR(196) + CHR(196) + CHR(179) + CHR(179) + CHR(218) +CHR(191) 
++ CHR(192) + CHR(217)
+* PanelRahmen-Fenstertyp
+#DEFINE WO_PANELBORDER REPLICATE(CHR(219),16)
+* System-Fenstertyp
+#DEFINE WO_SYSTEMBORDER REPLICATE(CHR(32),4) + CHR(254) + CHR(240) + CHR(32) 
++ CHR(249) + REPLICATE(CHR(32),8) 
+
+Das Fenster wird definiert, aber noch nicht geöffnet. Die Attribute, sowie ein Fenstertitel können mit den Funktionen: _WATTR() und _WTITLE() abgefragt und mit _WSETATTR() und _WSETTITLE() verändert werden. Abschließend können Sie mit der Funktion _WSHOW(m.FP_HANDLE) das Fenster anzeigen.
+
+Tip: Diese, von einer „LowLevel“-Funktion erzeugten Fenster, erscheinen nicht im System-Pulldownmenü „Fenster“ und können auch nicht mit CLEAR ALL oder CLEAR WINDOWS ALL gelöscht werden - sie sind ideal für den Einsatz von System-Erweiterungen (Symbolleiste etc) geeignet!
+
+Falle: Wenn Sie ein Fenster mit dem Attribut „CLOSE := 8“ (Benutzer kann Fenster schließen) definiert haben, müssen Sie vor Anwendung der Funktion _WCLOSE(Handle) unbedingt überprüfen, ob das Handle noch gültig ist (Fenster noch exisitiert) - sonst steht Ihnen mal wieder ein System-Crash ins Haus! Weitere Details erfahren Sie unter der Funktionsbeschreibung für _WCLOSE().
+Beispiel:
+
+STORE 0 TO m.N_oben, m.N_links
+STORE 630 TO m.N_rechts
+STORE 50 TO m.N_unten
+#DEFINE WO_SYSTEMBORDER REPLICATE(CHR(32),4) 
++ CHR(254) + CHR(240) + CHR(32) + CHR(249) + ;
+REPLICATE(CHR(32),8)
+#DEFINE WCURSOR 2 && Cursor wird im Fenster angezeigt
+#DEFINE ZOOM 4 && Benutzer kann Fenster zoomen
+#DEFINE ADJ 8 && Benutzer kann Größe verändern
+#DEFINE MOVE 32 &&Benutzer kann Fenster bewegen
+#DEFINE AUTOSCROLL 256 &&Auto-Scrolling aktiviert
+#DEFINE WEVENT 1024 &&Empfängt, aktiviert und deaktiviert Ereignisse
+m.C_flags = WCURSOR + ZOOM + ADJ + MOVE + ;
+AUTOSCROLL + WEVENT
+m.N_scheme = 5 && Standard-Schema #5
+m.C_colors = "" && kein eigenes Schema
+* Jetzt Fenster definieren
+m.wh_01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,
+; m.C_flags, m.N_scheme, m.C_colors, WO_SYSTEMBORDER)
+* und anzeigen
+= _WSHOW(m.wh_01) 
+
+_WSCROLLP() [pixelorientiert]
+
+Zweck: Scrollt einen rechteckigen Fensterbereich.
+Syntax:
+_WSCROLLP(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>,<AusdrN6>,<AusdrN7>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Reihe der oberen Pixel-Koordinate
+<AusdrN3> Spalte der linken Pixel-Koordinate
+<AusdrN4> Reihe der unteren Pixel-Koordinate
+<AusdrN5> Spalte der rechten Pixel-Koordinate
+<AusdrN6> horizontal Scrollen
+<AusdrN7> vertikale Scrollen
+Rückgabe: Logisch
+Vgl.: _WSCROLLP()
+Beschreibung:
+
+Diese Funktion dient dazu, einen Bereich des FPW-Fensters nach links oder rechts, aufwärts oder abwärts zu scrollen. Geben Sie in <AusdrN1> das FP-FensterHandle für das Fenster an, dessen Bereich gescrollt werden soll. Die Parameter <AusdrN2> bis <AusdrN5> beschreiben den zu scrollenden Bereich. im Parameter <AusdrN6> übergeben Sie die Anzahl der Pixel um die horizontal verschoben werden soll. Ist der Wert hier negativ, so wird der Fensterinhalt nach links gescrollt. Umgekehrt gilt für einen positiven Wert, daß der Fensterinhalt nach rechts verschoben wird. Im letzten Parameter <AusdrN7> findet sich die Anzahl der Pixel um die vertikal verschoben werden soll. Ist der Wert hier negativ, so wird der Fensterinhalt nach oben gescrollt. Umgekehrt gilt für einen positiven Wert, daß der Fensterinhalt nach unten verschoben wird. WICHTIG: Sind beide Werte gleich 0, so löscht _WSCROLL() den festgelegten Bereich.
+Beispiel:
+
+STORE 200 TO m.N_oben, m.N_links
+STORE 500 TO m.N_unten, m.N_rechts
+STORE 50 TO m.N_hori
+STORE -10 TO m.N_verti
+= _WSCROLLP(m.wh_01, m.N_oben, m.N_links, m.N_unten, m.N_rechts, 
+m.N_hori, m.N_verti) 
+
+_WCLOSE()
+
+Zweck: Schließen eines Fensters.
+Syntax: _WCLOSE(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _WOPEN(), _WOPENP()
+Beschreibung:
+
+Die Funktion schließt das Fenster mit dem in <AusdrN1> übergebenen FP-FensterHandle und gibt den belegten Speicherplatz wieder frei. Falle: Wenn Sie ein Fenster mit dieser Funktion schließen wollen und als Übergabeparameter eine ungültige Handle-Nummer übergeben, ist ein System-Crash ziemlich sicher!
+Beispiel:
+
+m.wh_01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,
+; m.C_flags, m.N_scheme, m.C_colors, WO_SYSTEMBORDER)
+= WCLOSE(m.wh_01) && schließen 
+
+_WHIDE()
+
+Zweck: Fenster verbergen.
+Syntax: _WHIDE(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _WSHOW()
+Beschreibung:
+
+Entfernt das Fenster dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben vom Bildschirm, behält seinen Inhalt aber gespeichert, so daß es jederzeit wieder mit _WSHOW() dargestellt werden kann.
+Beispiel:
+
+m.wh_01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,
+; m.C_flags, m.N_scheme, m.C_colors, WO_SYSTEMBORDER)
+= WHIDE(m.wh_01) && verstecken 
+
+_WSHOW()
+
+Zweck: Anzeigen eines verborgenen Fensters.
+Syntax: _WSHOW(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _WHIDE()
+Beschreibung:
+
+Stellt das mittels _WHide() verborgene Fenster wieder auf dem Bildschirm dar.
+Beispiel:
+
+= WHIDE(m.wh_01) && verstecken
+= WSHOW(m.wh_01) && anzeigen 
+
+_WZOOM()
+
+Zweck: Fenstergröße verändern.
+Syntax: _WZOOM(<AusdrN1>,<AusdrN2>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Fensterstatus nach Zoom
+Rückgabe: Logisch
+Vgl.: _WSHOW(), _WHIDE()
+Beschreibung:
+
+Die Funktion dient dazu, das Fenster dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen zu minimieren, zu maximieren oder wieder auf Urspungsgröße zu bringen. Der zweite Parameter <AusdrN2> kann folgendermaßen gesetzt werden:
+
+#DEFINE WZ_MINIMIZE 2
+#DEFINE WZ_NORMAL 1
+#DEFINE WZ_MAXIMIZE 0 
+
+Für den Macintosh hat WZ_MINIMIZE keinen Effekt.
+Beispiel:
+
+#DEFINE ZOOM 4 &&Benutzer kann Fenster zoomen
+#DEFINE ADJ 8 &&Benutzer kann Größe verändern
+#DEFINE WO_SYSTEMBORDER ;
+REPLICATE(CHR(32),4) + CHR(254) + ;
+CHR(240) + CHR(32) + CHR(249) + ;
+REPLICATE(CHR(32),8)
+STORE 0 TO m.N_oben, m.N_links
+STORE 20 TO m.N_unten, m.N_rechts
+m.C_flags = ZOOM+ADJ
+m.wh_01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,
+; m.C_flags, 1, "", WO_SYSTEMBORDER)
+= WZOOM(m.wh_01, WZ_MAXIMIZE) && maximieren 
+
+_WSELECT()
+
+Zweck: Fenster OnTop bringen (selektieren).
+Syntax: _WSELECT(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _WSENDBEHI(), _WSETPORT(),
+_WGETPORT()
+Beschreibung:
+
+Dient dazu, das Fenster, dessen FP-Handle Sie in <AusdrN1> übergeben müssen auf dem Bildschirm in den Vordergrund treten zu lassen. Dabei wird das Fenster nur im Stapel „OnTop“ geholt aber noch nicht automatisch zum aktiven Ausgabefenster. Verwenden Sie hierfür den Befehl _WSETPORT()
+Beispiel:
+
+m.N_temp = _WGETPORT() && aktuelles AusgabefensterHandle ... 
+
+IF m.N_temp <> m.N_FP_hwnd01 && ... nicht Handle von Message-Win 
+
+= _WSELECT(m.N_FP_hwnd01) && Message-Win nach vorne holen 
+
+= _WSETPORT(m.N_FP_hwnd01) && Ausgabe darin aktivieren 
+
+? "Bitte Taste drücken" 
+
+= INKEY(0,"HM") && Auf Taste warten 
+
+= _WHIDE(m.N_FP_hwnd01) && Message-Win verstecken 
+
+= _WSETPORT(m.N_temp) && alten Ausgabeport reaktivieren 
+
+ELSE 
+
+? "Bitte Taste drücken" 
+
+= INKEY(0,"HM") && Auf Taste warten 
+
+ENDIF 
+
+_WSENDBEHI()
+
+Zweck: Fenster im Stapel nach hinten stellen.
+Syntax: _WSENDBEHI(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _WSELECT()
+Beschreibung:
+
+Dient dazu, das Fenster, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen, auf dem Bildschirm in den Hintergrund treten zu lassen. Es befindet sich dann an unterster Position im Fensterstapel. Der Ausgabeport wird dadurch nicht beeinflußt!
+Beispiel:
+
+= _WSENDBEHI(m.N_FP_hwnd01) 
+
+_WGETPORT()
+
+Zweck: Holen des FP-FensterHandles des aktiven Ausgabefensters.
+Syntax: _WGETPORT()
+Parameter: keine
+Rückgabe: Nummerisch
+Vgl.:
+Beschreibung:
+
+Gibt das FP-FensterHandle des Fensters, welches aktuell dem Benutzer zur Ausgabe dient zurück.
+Beispiel:
+
+    m.N_curPort = _WGETPORT() && aktuelles AusgabefensterHandle ...
+    = _WSETPORT(m.N_FP_hwnd01) && Neues Fenster aktivieren
+    ? "Bitte Taste drücken"
+    = INKEY(0,"HM") && Auf Taste warten
+    = _WCLOSE(m.N_FP_hwnd01) && Fenster releasen
+    = _WSETPORT(m.N_curPort) && alten Ausgabeport reaktivieren 
+
+_WSETPORT() leicht fehlerhaft
+
+Zweck: Ausgabe-Fenster festlegen.
+Syntax: _WSETPORT(<AusdrN1>)
+Parameter: <AusdrZ1> FP-Handle des Fensters
+Rückgabe: Nummerisch (nicht zu gebrauchen!)
+Vgl.: _WGETPORT()
+Beschreibung:
+
+Diese Funktion legt das Fenster, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen, als das neue Ausgabefenster fest und sollte als Wert das Handle des davor aktiven Ausgabefensters zurückgeben. Falle: der Wert der zurückgegeben wird ist kein gültiges FP-FenserHandle! Benutzen Sie ihn also NICHT in anderen Funktionen weiter!
+
+WICHTIG: Sie sollten nicht vergessen, das „alte“ Ausgabefenster wieder zu reaktivieren, nachdem Ihre Routine mit der _WSETPORT()-Funktion abgearbeitet worden ist. - So steht es jedenfalls in der Dokumentation zur _WSetPort( )-Funktion im Library Construction Kit S. 298ff.. Dies bezieht sich aber primär auf Ihre selbst entwickelten API-Routinen. Inwiefern diesem Ratschlag in der <Foxtools.fll>-Routine schon Rechnung getragen wurde, entzieht sich meiner Kenntnis. Ich empfehle daher aus Sicherheitsgründen (Programmstabilität), nach Beenden der Manipulationen am Ausgabefenster den vorigen „Orginalport“ immer wie empfohlen zu restaurieren!
+Beispiel:
+
+    m.N_GoodPort = _WGETPORT( ) && dieses FP-Handle ist OK!...
+    m.N_SchrottPort = _WSETPORT(m.N_MessagePort) && ...dieses nicht!
+    RELEASE m.N_SchrottPort && Wert ist "Trümmer", also weg damit
+    ? "Bitte warten"
+    = _WSETPORT(m.N_GoodPort) 
+
+_WMOVE() [zeichenorientiert]
+
+Zweck: Bewegt ein Fenster zeichenweise.
+Syntax:
+_WMOVE(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Ecke links,oben auf Spalte #
+<AusdrN3> Ecke links,oben auf Zeile #
+Rückgabe: Logisch
+Vgl.: _WMOVEP()
+Beschreibung:
+
+Bewegt das durch das FP-FensterHandle in <AusdrN1> übergebene Fenster an eine neue Position. Die neuen Koordinaten der linken, oberen Ecke des Fensters werden in (Integerwerten) Reihen und Spalten in den Parametern <AusdrN2> und <AusdrN3> an die Funktion übergeben. Das Fenster kann nach Durchführung auch teilweise oder ganz außerhalb des Bildschirms liegen.
+Beispiel:
+
+= _WMOVE(m.N_wHandle, 1,2) && Fenster auf Spalte #1, Zeile #2 setzen 
+
+_WSIZE() [zeichenorientiert]
+
+Zweck: Fenstergröße verändern.
+Syntax:
+_WSIZE(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> neue Fensterbreite in Spalten
+<AusdrN3> neue Fensterhöhe in Zeilen
+Rückgabe: Logisch
+Vgl.: _WSIZEP()
+Beschreibung:
+
+Legt die neuen Abmessungen des Fensters fest, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. Die neue Breite in Spalten und die neue Höhe in Zeilen werden in den Parametern <AusdrN2> und <AusdrN3> übergeben.
+Beispiel:
+
+= _WSIZE(m.N_wHandle, 5,10) 
+
+_WMOVEP() [pixelorientiert]
+
+Zweck: Bewegt ein Fenster pixelweise.
+Syntax:
+_WMOVEP(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Ecke links,oben auf Pixelspalte # relativ zum Screen
+<AusdrN3> Ecke links,oben auf Pixelzeile # relativ zum Screen
+Rückgabe: Logisch
+Vgl.: _WMOVE()
+Beschreibung:
+
+Bewegt das durch das FP-FensterHandle in <AusdrN1> übergebene Fenster an eine neue Position. Die neuen Koordinaten der linken, oberen Ecke des Fensters werden in Pixelwerten der Reihen und Spalten in den Parametern <AusdrN2> und <AusdrN3> an die Funktion übergeben. Das Fenster kann nach Durchführung auch teilweise oder ganz außerhalb des Bildschirms liegen.
+Beispiel:
+
+= _WMOVEP(m.N_wHandle, 100,200) && Fenster auf Point (100,200) 
+
+_WSIZEP() [pixelorientiert]
+
+Zweck: Fenstergröße verändern.
+Syntax:
+_WSIZEP(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> neue Fensterbreite in Pixeln
+<AusdrN3> neue Fensterhöhe in Pixeln
+Rückgabe: Logisch
+Vgl.: _WSIZE()
+Beschreibung:
+
+Legt die neuen Abmessungen des Fensters fest, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. Die neue Breite und die neue Höhe werden in den Parametern <AusdrN2> und <AusdrN3> als Pixelwerte übergeben.
+Beispiel:
+
+= _WSIZE(m.N_wHandle, 300,100) 
+
+* neue Breite: 300 Pixel, Höhe: 100 Pixel 
+
+_WTOP() [zeichenorientiert]
+
+Zweck: Fenster "VonZeile"-Wert zurückgeben.
+Syntax: _WTOP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WTOPP(), WBOTTOM()
+Beschreibung:
+
+Ermittelt die Bildschirmzeile auf der sich die obere Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. >Unter Windows werden alle theoretischen Nachkommastellen, die ja durch die pixelgenaue Positionierung möglich sind, im Rückgabewert abgeschnitten.
+Beispiel:
+
+? _WTOP(m.N_wHandle) && obere Fensterkante auf Zeile # 
+
+_WBOTTOM() [zeichenorientiert]
+
+Zweck: Fenster "BisZeile"-Wert zurückgeben.
+Syntax: _WBOTTOM(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WBOTTOMP(), _WTOP()
+Beschreibung:
+
+Ermittelt die Bildschirmzeile auf der sich die untere Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. Unter Windows werden alle Nachkommastellen, die durch die pixelgenaue Positionierung möglich sind, im Rückgabewert abgeschnitten.
+Beispiel:
+
+? _WBOTTOM(m.N_wHandle) && untere Fensterkante auf Zeile # 
+
+_WLEFT() [zeichenorientiert]
+
+Zweck: Fenster "VonSpalte"-Wert zurückgeben.
+Syntax: _WLEFT(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WLEFTP(), WRIGHT()
+Beschreibung:
+
+Ermittelt die Bildschirmspalte auf der sich die linke Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. Unter Windows werden alle theoretischen Nachkommastellen, die durch die pixelgenaue Positionierung möglich sind, im Rückgabewert abgeschnitten.
+Beispiel:
+
+? _WLEFT(m.N_wHandle) && linke Fensterkante auf Spalte # 
+
+_WRIGHT() [zeichenorientiert]
+
+Zweck: Fenster "BisSpalte"-Wert zurückgeben.
+Syntax: _WRIGHT(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WRIGHTP(), WLEFT()
+Beschreibung:
+
+Ermittelt die Bildschirmspalte auf der sich die rechte Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben. Unter Windows werden alle theoretischen Nachkommastellen, die durch die pixelgenaue Positionierung möglich sind, im Rückgabewert abgeschnitten.
+Beispiel:
+
+? _WRIGHT(m.N_wHandle) && rechte Fensterkante auf Spalte # 
+
+_WHEIGHT() [zeichenorientiert]
+
+Zweck: Nutzbare Fensterhöhe.
+Syntax: _WHEIGHT(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WHEIGHTP(), _WWIDTH()
+Beschreibung:
+
+Ermittelt die Anzahl der Zeilen im nutzbaren Innenbereich (client area) des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen. Unter Windows müssen Sie das Funktionsresultat noch mit der durchschnittlichen Zeichenhöhe in Pixeln multiplizieren, um ein brauchbares Ergebnis zu bekommen!
+Beispiel:
+
+? _WHEIGHT(m.N_wHandle) && Nutzbare Zeilen # in Fenster 
+
+_WWIDTH() [zeichenorientiert]
+
+Zweck: Nutzbare Fensterhöhe in Pixelzeilen.
+Syntax: _WWIDTH(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WWIDTHP(), _WHEIGHT()
+Beschreibung:
+
+Ermittelt die Anzahl der Pixelspalten im nutzbaren Innenbereich (client area) des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen. Unter Windows müssen Sie das Funktionsresultat noch mit der durchschnittlichen Zeichenbreite in Pixeln multiplizieren, um ein brauchbares Ergebnis zu bekommen!
+Beispiel:
+
+? _WWIDTH(m.N_wHandle) && Nutzbare Pixelspalten # in Fenster 
+
+_WTOPP() [pixelorientiert]
+
+Zweck: Fenster "VonPixelZeile"-Wert zurückgeben.
+Syntax: _WTOPP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WTOP(), WBOTTOMP()
+Beschreibung:
+
+Ermittelt die Bildschirm-Pixelzeile auf der sich die obere Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben.
+Beispiel:
+
+? _WTOPP(m.N_wHandle) && obere Fensterkante auf Pixelzeile # 
+
+_WBOTTOMP() [pixelorientiert]
+
+Zweck: Fenster "BisPixelZeile"-Wert zurückgeben.
+Syntax: _WBOTTOMP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WBOTTOM(), _WTOPP()
+Beschreibung:
+
+Ermittelt die Bildschirm-Pixelzeile auf der sich die untere Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben.
+Beispiel:
+
+? _WBOTTOMP(m.N_wHandle) && untere Fensterkante auf Pixelzeile # 
+
+_WLEFTP() [pixelorientiert]
+
+Zweck: Fenster "VonPixelSpalte"-Wert zurückgeben.
+Syntax: _WLEFTP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WLEFT(), WRIGHTP()
+Beschreibung:
+
+Ermittelt die Bildschirm-Pixelspalte auf der sich die linke Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben.
+Beispiel:
+
+? _WLEFTP(m.N_wHandle) && linke Fensterkante auf Pixelspalte # 
+
+_WRIGHTP() [pixelorientiert]
+
+Zweck: Fenster "BisPixelSpalte"-Wert zurückgeben.
+Syntax: _WRIGHTP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WRIGHT(), WLEFTP()
+Beschreibung:
+
+Ermittelt die Bildschirms-Pixelpalte auf der sich die rechte Seite des Fensters befindet, dessen FP-FensterHandle Sie in <AusdrN1> übergeben haben.
+Beispiel:
+
+? _WRIGHTP(m.N_wHandle) && rechte Fensterkante auf Pixelspalte # 
+
+_WHEIGHTP() [pixelorientiert]
+
+Zweck: Nutzbare Fensterhöhe in Pixeln.
+Syntax: _WHEIGHTP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WHEIGHT(), _WWIDTHP()
+Beschreibung:
+
+Ermittelt die Anzahl der Pixelzeilen im nutzbaren Innenbereich (client area) des Fensters, dessen FP_FensterHandle Sie in <AusdrN1> übergeben müssen.
+Beispiel:
+
+? _WHEIGHTP(m.N_wHandle) && Nutzbare Pixelzeilen # in Fenster 
+
+_WWIDTHP() [pixelorientiert]
+
+Zweck: Nutzbare Fensterhöhe in Pixeln.
+Syntax: _WWIDTHP(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WWIDTH(), _WHEIGHTP()
+Beschreibung:
+
+Ermittelt die Anzahl der Spalten im nutzbaren Innenbereich (client area) des Fensters, dessen FP_FensterHandle Sie in <AusdrN1> übergeben müssen.
+Beispiel:
+
+? _WWIDTHP(m.N_wHandle) && Nutzbare Pixelspalten # in Fenster 
+
+_WCLEAR()
+
+Zweck: Client-Area eines Fensters löschen.
+Syntax: _WCLEAR(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Logisch
+Vgl.: _GETWRECT(),_WCLEARREC(),
+_WCLEARREP()
+Beschreibung:
+
+Löscht den Inhalt des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen, indem der Innenbereich durch eine Fläche in der voreingestellten Hintergrundfarbe ersetzt wird. Die Cursorposition bleibt dabei unverändert. Achtung: unter Windows wird immer mit der in der Systemsteuerung eingestellten Texthintergrundfarbe gelöscht!
+Beispiel:
+
+? _WCLEAR(m.N_wHandle) && Client Area löschen 
+
+_WCLEARREC() [zeichenorientiert]
+
+Zweck: Rechteckigen Bereich eines Fensters löschen.
+Syntax:
+_WCLEARREC(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Reihe der oberen Zeile
+<AusdrN3> Spalte der linken Spalte
+<AusdrN4> Reihe der unteren Zeile
+<AusdrN5> Spalte der rechten Spalte
+Rückgabe: Logisch
+Vgl.: _GETWRECT(), _WCLEARRECP(),
+_WCLEAR()
+Beschreibung:
+
+Löscht den rechteckigen Inhalt des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen, indem der Innenbereich durch eine Fläche in der voreingestellten Hintergrundfarbe ersetzt wird. Achtung: unter Windows wird immer mit der in der Systemsteuerung eingestellten Texthintergrundfarbe gelöscht! Das zu löschende Rechteck wird in den Parametern <AusdrN2> für die obere Rechteck-Zeile, <AusdrN3> für die linke Rechteck-Spalte, <AusdrN4> für die untere Rechteck-Zeile und <AusdrN4> für die linke Rechteck-Spalte übergeben. Diese Zeilen- und Spalten-Angaben „umschließen“ das zu löschende Rechteck! Dies bedeutet, daß man die Koordinaten für <AusdrN4> und <AusdrN5> um eins größer und die in <AusdrN2> und <AusdrN3> um eins kleiner wählen muß, als das zu löschende Rechteck selbst groß sein soll. Die Cursorposition bleibt von der Funktion unverändert bestehen.
+Beispiel:
+
+STORE 2 TO m.N_oben, m.N_links
+STORE 8 TO m.N_unten, m.N_rechts
+m.N_wHandle = _WGETPORT()
+= _WCLEARREC(m.N_wHandle,m.N_oben, m.N_links,m.N_unten, m.N_rechts) 
+
+_WCLEARRECP() [pixelorientiert]
+
+Zweck: Rechteckigen PixelBereich eines Fensters löschen.
+Syntax:
+_WCLEARRECP(<AusdrN1>,<AusdrN2>,<AusdrN3>,<AusdrN4>,<AusdrN5>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Reihe der oberen Pixel-Zeile
+<AusdrN3> Spalte der linken Pixel-Spalte
+<AusdrN4> Reihe der unteren Pixel-Zeile
+<AusdrN5> Spalte der rechten Pixel-Spalte
+Rückgabe: Logisch
+Vgl.: _GETWRECT(), _WCLEARREC(),
+_WCLEAR()
+Beschreibung:
+
+Löscht den rechteckigen Inhalt des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen, indem der Innenbereich durch eine Fläche in der voreingestellten Hintergrundfarbe ersetzt wird. Achtung: unter Windows wird immer mit der in der Systemsteuerung eingestellten Texthintergrundfarbe gelöscht! Das zu löschende Rechteck wird in den Parametern <AusdrN2> für die obere Rechteck-Pixelzeile, <AusdrN3> für die linke Rechteck-Pixelspalte, <AusdrN4> für die untere Rechteck-Pixelzeile und <AusdrN4> für die linke Rechteck-Pixelspalte übergeben. Diese Pixel-Zeilen/Spaltenangaben „umschließen“ das zu löschende Rechteck! Dies bedeutet, daß man die Koordinaten für <AusdrN4> und <AusdrN5> um einen Pixel größer und die in <AusdrN2> und <AusdrN3> um einen Pixel kleiner wählen muß, als das zu löschende Rechteck selbst groß sein soll. Die Cursorposition bleibt von der Funktion unverändert bestehen.
+Beispiel:
+
+STORE 100 TO m.N_oben, m.N_links
+STORE 300 TO m.N_unten, m.N_rechts
+m.N_wHandle = _WGETPORT()
+= _WCLEARREC(m.N_wHandle,m.N_oben, m.N_links,m.N_unten, m.N_rechts) 
+
+_WPOSCURSO() [zeichenorientiert]
+
+Zweck: Setzen des Ausgabe-Cursors.
+Syntax:
+_WPOSCURSO(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Spalte der neuen Ausgabekoordinate
+<AusdrN3> Zeile der neuen Ausgabekoordinate
+Rückgabe: Logisch
+Vgl.: _WSETCURP(), _WGETCURSOR()
+Beschreibung:
+
+Setzt die Ausgabeposition im Fenster, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen an die neue Position, deren Koordinaten Sie in <AusdrN2> für Spalte# und <AusdrN3> für Zeile# angeben müssen. Das Neusetzen führt allerdings nicht dazu, daß die Eingabestelle erscheint. Normalerweise ist die Eingabestelle nur sichtbar, wenn FoxPro auf eine Eingabe wartet.
+Beispiel:
+
+STORE 1 TO m.N_links && neue Spalte = 1
+STORE 3 TO m.N_oben && neue Zeile =3
+= _WSETCURSO(m.N_wHandle, m.N_links, m.N_oben) && Cursor setzen 
+
+_WPOSCURP() [pixelorientiert]
+
+Zweck: Setzen des Ausgabe-Cursors unter Windows.
+Syntax:
+_WPOSCURP(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Pixel-Spalte der neuen Ausgabekoordinate
+<AusdrN3> Pixel-Zeile der neuen Ausgabekoordinate
+Rückgabe: Logisch
+Vgl.: _WSETCURSO(), _WGETCURP()
+Beschreibung:
+
+Setzt die Ausgabeposition im Fenster, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen an die neue Position, deren Koordinaten Sie in <AusdrN2> für Pixel-Spalte# und <AusdrN3> für Pixel-Zeile# angeben müssen. Das Neusetzen führt allerdings nicht dazu, daß die Eingabestelle erscheint. Normalerweise ist die Eingabestelle nur sichtbar, wenn FoxPro auf eine Eingabe wartet.
+Beispiel:
+
+STORE 100 TO m.N_links && neue Pixel-Spalte = 100
+STORE 300 TO m.N_oben && neue Pixel-Zeile =300
+= _WSETCURSO(m.N_wHandle, m.N_links, m.N_oben) && Cursor setzen 
+
+_WGETCURSO() [zeichenorientiert]&fehlerhaft
+
+Zweck: Ermitteln der AusgabeCursor-Koordinaten.
+Syntax:
+_WGETCURSO(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> nummerischer Wert, der nicht als Referenz überg. werden darf
+<AusdrN3> nummerischer Wert, der nicht als Referenz überg. werden darf
+Rückgabe: Nummerisch immer <3> (also unsinnig)
+Vgl.: _WGETCURP(), _WPOSCURSO()
+Beschreibung:
+
+_WGETCURSO() sollte eigentlich die aktuelle Ausgabeposition im angegebenen Fenster in Zeilen und Spalten ermitteln! Ich hätte mir den Einsatz der Funktion folgendermaßen gedacht:
+
+STORE 0 TO m.N_Spalte, m.N_Zeile && POINT-Koordinaten initialisieren
+m.N_FP_whdl = GETPORT( ) && AusgabefensterHandle holen
+= _WGETCURSOR(m.N_FP_whdl,@N_Spalte, @N_Zeile)
+? "Ausgabe erfolgt derzeit in Zeile #"+;
+ALLTRIM(STR(m.N_Zeile,10,0))+;
+" und dort in Spalte #"+ ;
+ALLTRIM(STR(m.N_Spalte,5,0)) 
+
+So hätte man die x/y-Koordinaten in den referenzierten Variablen ablegen können und als Funktions Return-Wert ein <.T.> zurückgeben können. Aber leider haut das nicht hin. Es wird immer eine Fehlermeldung wegen zu wenigen Übergabe-Parametern (wenn man mit deren Anzahl experimentiert), oder wegen falschem Datentyp zurückgegeben. Das nachfolgende Beispiel „funktioniert“ zwar anscheinend fehlerlos, bringt aber kein vernünftiges Ergebnis zurück!
+Beispiel:
+
+m.N_wHandle = _WFINDTITL("Befehl")
+STORE 0 TO m.point1,m.point2
+?_WGETCURSO(m.N_wHandle,m.point1,m.point2)
+* Returnwert gibt immer> 3 und Werte von <m.point1> und <m.point2> 
+(logischerweise!) immer unverändert <0>! 
+
+_WGETCURP() [pixelorientiert] & fehlerhaft
+
+Zweck: Ermitteln der AusgabeCursor-Koordinaten.
+Syntax:
+_WGETCURP(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> nummerischer Wert, der nicht als Referenz überg. werden darf
+<AusdrN3> nummerischer Wert, der nicht als Referenz überg. werden darf
+Rückgabe: Nummerisch immer <3> (also unsinnig)
+Vgl.: _WGETCURSO(), _WPOSCURP()
+Beschreibung:
+
+Nur für Windows und Mac. Sollte eigentlich die aktuelle Ausgabeposition im angegebenen Fenster in Pixeln ermitteln. - Funktioniert aber genausowenig wie die DOS-Variante _WGETCURSO() !
+Beispiel: können wir uns sparen....
+_WATTR() Fehlerhafte Funktion
+
+Zweck: Holen eines Farb-Attributs für Fenster.
+Syntax: _WATTR(<AusdrN1>,<AusdrN2>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Farb-Attribut Indexnummer des Fensters
+Rückgabe: Nummerisch
+Vgl.: _WSETATTR()
+Beschreibung:
+
+Ermittelt ein Farbattribut-Byte (Int-Wert), dessen Indexnummer sie in <AusdrN2> übergeben müssen, aus dem Farbindex in der Farbpalette des angegebenen Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen. Logischerweise wird für jedes einzelne Fenster eine Farbattributsliste geführt. Anders als der FoxPro-Befehl SCHEME(), der Info´s zu einem Schema (gültig für alle Fenster) zurückgibt, erhält man mit _Wattr() Info´s speziell nur zum Schema des angegebenen Fensters! Farb-Indexnummern die von _WSetAttr() and _WAttr() benutzt werden, sind im ..\LCK\PRO_EXT.H wie folgt aufgelistet:
+
+enum
+WA_PENCOLOR = -1, 
+
+/* CURRENT PEN COLOR = -1 */
+WA_NORMAL, /* normal text 0 */
+WA_ENHANCED, /* enhanced text 1 */
+WA_BORDER, /* window border 2 */
+WA_FOREMOST, /* title when foremost 3 */
+WA_TITLE, /* title otherwise 4 */
+WA_SELECTED, /* selected text 5 */
+WA_HOTKEY, /* control hotkeys 6 */
+WA_SHADOW, /* color of shadows that fall on this window. 7 */
+WA_ENABLED, /* enabled control 8 */
+WA_DISABLED, /* disabled control 9 */
+WA_ISSHADOW /* window casts a shad 10 */ 
+
+Die Funktion müßte jetzt also bei Aufruf mit einem gültigen Handle z.B.:
+
+_WATTR(m.N_FP_hndl, 0) 
+
+das Farbattribut für den normalen Ausgabetext zurückgeben, oder für 
+
+_WATTR(m.N_FP_hndl, -1) 
+
+die Stiftfarbe ermitteln! Nix da (!), es wird konstant und beharrlich der in <AusdrN2> übergebene Wert auch als Return-Wert zurückgegeben. Das ist unbrauchbar!
+Beispiel:
+
+* Theoretisch müßte die Funktion so arbeiten:
+* Ausgeben des kompletten Farb-Schemas, das vom aktiven 
+* Ausgabefenster verwendet wird:
+m.N_hdl = _WOPEN(...... && Fenster öffnen, damit wir ein FP-Handle haben
+DIMENSION Schema[11]
+
+FOR m.i = -1 TO 10
+* alle Attribute in Array sichern:
+Schema[m.i] = _WATTR(m.N_hl, m.i) 
+NEXT
+* jetzt können hier Farbänderungen mit der 
+* _WSETATTR()-Funktion vorgenommen werden....
+* ....und dann abschließend wieder restaurieren...
+
+FOR m.i=1 TO 11
+* Attribute aus Array restaurieren:
+= WSETATTR(m.N_hl, m.i-2,Schema[m.i])
+NEXT 
+
+Da aber das Array (in aufsteigender Reihenfolge) immer mit den Werten -1,0,1,2,3,...,10 gefüllt wird, werden keine korrekten Einstellungen restauriert!
+_WSETATTR()
+
+Zweck: Setzen eines neuen Farb-Attributs für ein spezielles Fenster.
+Syntax:
+_WSETATTR(<AusdrN1>,<AusdrN2>,<AusdrN3>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN2> Farbattribut-Indexnummer [-1 bis 10]
+<AusdrN3> Attribut-Byte: neuer Wert
+Rückgabe: Logisch
+Vgl.: _WATTR()
+Beschreibung:
+
+Ändert das Attribut-Byte im fenstereigenen Schema im Eintrag (Index) <AusdrN2>. Der neue Wert wird in <AusdrN3> übergeben und ersetzt den vorhandenen. Das Fenster, dessen Farbattributsliste sie ändern möchten, wird als FP-FensterHandle in <AusdrN1> an die Funktion übergeben.
+Beispiel:
+
+#DEFINE WA_PENCOLOR -1
+#DEFINE RED_ON 4 && 0000 0100
+#DEFINE WHITE 112 && 0111 0000
+#DEFINE BRIGHT 8 && 0000 1000
+#DEFINE BLINK 128 && 1000 0000
+STORE RED_ON+WHITE+BRIGHT TO m.attrib
+m.N_FP_hwnd01 = _WOPEN(0,0,50,30,........ u.s.w...
+= _WSETATTR(m.N_FP_hwnd01, WA_PENCOLOR, m.attrib)
+= _WSHOW(m.N_FP_hwnd01)
+= _WSETPORT(m.N_FP_hwnd01)
+= _WPUTSTR(m.N_FP_hwnd01,"Roter Text auf grauem Grund") 
+
+_WPUTCHR()
+
+Zweck: Zeichen an Ausgabeposition in Fenster ausgeben.
+Syntax: _WPUTCHR(<AusdrN1>,<AusdrN2>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrN1> Zeichenwert
+Rückgabe: Logisch
+Vgl.: _WPUTSTR()
+Beschreibung:
+
+Stellt das durch <AusdrN2> festgelegte Zeichen an der Ausgabeposition des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen in der aktuellen PEN/PAPER-Farbe dar. Spezielle Zeichen, wie z.B. für´s Einfügen einer Zeile (Carriage-Return) oder BEEP (CHR(7) werden als Steuerzeichen verwendet und nicht auf dem Bildschirm dargestellt. Um solche Zeichen als „Text“ ausgeben zu lassen, müssen Sie den IntWert <256> zum <AusdrN2> Wert hinzuaddieren.
+Beispiel:
+
+=_WPUTCHR(m.N_FP_hwnd01,10) && LF senden
+=_WPUTCHR(m.N_FP_hwnd01,10+256) && LF-Zeichen in Fenster schreiben 
+
+_WPUTSTR()
+
+Zweck: Zeichenkette an Ausgabeposition in Fenster ausgeben.
+Syntax: _WPUTSTR(<AusdrN1>,<AusdrZ1>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrZ1> Zeichenkette
+Rückgabe: Logisch
+Vgl.: _WPUTCHR()
+Beschreibung:
+
+Stellt eine Zeichenkette, die Sie in <AusdrZ1> übergeben müssen an der aktuellen Ausgabeposition des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen in der aktuellen PEN/PAPER-Farbe dar. Ausgaben, die normalerweise ein Scrolling im Fenster bewirken, können undefinerte Resultate hervorrufen, falls vorher das Attribut AUTOSCROLL bei Fensterdefinition mittels _WOPEN() oder _WOPENP() nicht gesetzt wurde - also nicht vergessen!
+Beispiel:
+
+m.N_FP_hwnd01 = _WOPENP(0,0, 100, 100,;
+m.C_flags, 1,1, WO_SYSTEMBORDER)
+=_WPUTSTR(m.N_FP_hwnd01,"Dies ist ein Test") 
+
+_WSETTITLE()
+
+Zweck: Setzen / entfernen eines Fenstertitels.
+Syntax: _WSETTITLE(<AusdrN1>,<AusdrZ1>)
+Parameter:
+<AusdrN1> FP-Handle des Fensters
+<AusdrZ1> neuer Fenstertitel oder <0> für Titel entfernen
+Rückgabe: Logisch
+Vgl.: _WTITLE()
+Beschreibung:
+
+Gibt dem Fenster, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen den unter <AusdrZ1> übergebenen Titel. Möchte man den Titel eines Fensters einfach nur entfernt, so übergibt man ausnahmsweise den nummerischen Wert <0> in <AusdrZ1> als neuen Titel.
+Beispiel:
+
+m.N_FP_hwnd01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,;
+m.C_flags, 1,1, WO_SYSTEMBORDER)
+= _WSETTITLE(m.N_FP_hwnd01,"Test") 
+
+_WTITLE()
+
+Zweck: Holen eines Fenster-Titels
+Syntax: _WTITLE(<AusdrN1>)
+Parameter: <AusdrN1> FP-Handle des Fensters
+Rückgabe: Zeichen
+Vgl.: _WSETTITLE()
+Beschreibung:
+
+Gibt den Titel des Fensters, dessen FP-FensterHandle Sie in <AusdrN1> übergeben müssen als Text zurück.
+Beispiel:
+
+m.N_FP_hwnd01 = _WOPENP(m.N_oben, m.N_links, m.N_unten, m.N_rechts,;
+m.C_flags, 1,1, WO_SYSTEMBORDER)
+= _WSETTITLE(m.N_FP_hwnd01,"Test")
+? _WTITLE(m.N_FP_hwnd01)
+
